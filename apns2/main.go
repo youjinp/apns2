@@ -1,64 +1,84 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/youjinp/apns2"
 	"github.com/youjinp/apns2/certificate"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/youjinp/apns2/payload"
 )
 
 var (
-	certificatePath = kingpin.Flag("certificate-path", "Path to certificate file.").Required().Short('c').String()
-	topic           = kingpin.Flag("topic", "The topic of the remote notification, which is typically the bundle ID for your app").Required().Short('t').String()
-	mode            = kingpin.Flag("mode", "APNS server to send notifications to. `production` or `development`. Defaults to `production`").Default("production").Short('m').String()
+	certificatePath string
+	topic           string
+	mode            string
+	token           string
+	title           string
+	body            string
 )
 
-func main() {
-	kingpin.UsageTemplate(kingpin.CompactUsageTemplate).Version("0.1").Author("Alisson Sales")
-	kingpin.CommandLine.Help = `Listens to STDIN to send notifications and writes APNS response code and reason to STDOUT.
-	The expected format is: <DeviceToken> <APNS Payload>
-	Example: aff0c63d9eaa63ad161bafee732d5bc2c31f66d552054718ff19ce314371e5d0 {"aps": {"alert": "hi"}}`
-	kingpin.Parse()
+var rootCmd = &cobra.Command{
+	Use:   "apns2",
+	Short: "A tool for sending APNS notifications",
+	Long:  `APNS2 is a CLI tool that helps with sending APNS notifications.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cert, pemErr := certificate.FromPemFile(certificatePath, "")
 
-	cert, pemErr := certificate.FromPemFile(*certificatePath, "")
-
-	if pemErr != nil {
-		log.Fatalf("Error retrieving certificate `%v`: %v", certificatePath, pemErr)
-	}
-
-	client := apns2.NewClient(cert)
-
-	if *mode == "development" {
-		client.Development()
-	} else {
-		client.Production()
-	}
-
-	scanner := bufio.NewScanner(os.Stdin)
-
-	for scanner.Scan() {
-		in := scanner.Text()
-		notificationArgs := strings.SplitN(in, " ", 2)
-		token := notificationArgs[0]
-		payload := notificationArgs[1]
-
-		notification := &apns2.Notification{
-			DeviceToken: token,
-			Topic:       *topic,
-			Payload:     payload,
+		if pemErr != nil {
+			log.Fatalf("Error retrieving certificate `%v`: %v", certificatePath, pemErr)
 		}
 
-		res, err := client.Push(notification)
+		client := apns2.NewClient(cert)
+
+		if mode == "development" {
+			client.Development()
+		} else {
+			client.Production()
+		}
+
+		res, err := client.Push(&apns2.Notification{
+			DeviceToken: token,
+			Topic:       topic,
+			Payload:     payload.NewPayload().AlertTitle(title).AlertBody(body),
+		})
 
 		if err != nil {
 			log.Fatal("Error: ", err)
 		} else {
 			fmt.Printf("%v: '%v'\n", res.StatusCode, res.Reason)
 		}
+	},
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number of APNS2",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("APNS2 v0.20.3")
+	},
+}
+
+func main() {
+
+	// root flags
+	rootCmd.Flags().StringVarP(&certificatePath, "certificate-path", "c", "", "Path to certificate file.")
+	rootCmd.Flags().StringVarP(&topic, "topic", "t", "", "The topic of the remote notification, which is typically the bundle ID for your app")
+	rootCmd.Flags().StringVarP(&mode, "mode", "m", "production", "APNS server to send notifications to. `production` or `development`")
+	rootCmd.Flags().StringVarP(&token, "token", "d", "", "The device token to send notifications to")
+	rootCmd.Flags().StringVarP(&title, "title", "e", "APNS Test", "The title of the APNS notification")
+	rootCmd.Flags().StringVarP(&body, "body", "b", "APNS Test", "The body of the APNS notification")
+	rootCmd.MarkFlagRequired("certificate-path")
+	rootCmd.MarkFlagRequired("topic")
+	rootCmd.MarkFlagRequired("token")
+
+	// version
+	rootCmd.AddCommand(versionCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
