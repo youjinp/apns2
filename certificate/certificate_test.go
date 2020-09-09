@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/sideshow/apns2/certificate"
 	"github.com/stretchr/testify/assert"
+	"github.com/youjinp/apns2/certificate"
 )
 
 // PKCS#12

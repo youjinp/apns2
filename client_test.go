@@ -17,10 +17,10 @@ import (
 
 	"golang.org/x/net/http2"
 
-	apns "github.com/sideshow/apns2"
-	"github.com/sideshow/apns2/certificate"
-	"github.com/sideshow/apns2/token"
 	"github.com/stretchr/testify/assert"
+	apns "github.com/youjinp/apns2"
+	"github.com/youjinp/apns2/certificate"
+	"github.com/youjinp/apns2/token"
 )
 
 // Mocks
