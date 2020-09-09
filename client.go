@@ -50,6 +50,16 @@ var DialTLS = func(network, addr string, cfg *tls.Config) (net.Conn, error) {
 	return tls.DialWithDialer(dialer, network, addr, cfg)
 }
 
+// ClientAPI is the interface representation of Client
+// Allows mocking
+type ClientAPI interface {
+	Development() *Client
+	Production() *Client
+	Push(n *Notification) (*Response, error)
+	PushWithContext(ctx Context, n *Notification) (*Response, error)
+	CloseIdleConnections()
+}
+
 // Client represents a connection with the APNs
 type Client struct {
 	Host        string
